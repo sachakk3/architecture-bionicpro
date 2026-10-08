@@ -1,0 +1,3 @@
+# The Airflow image only needs requirements.txt
+*
+!requirements.txt
