@@ -60,8 +60,9 @@ def partition_id(day: str) -> str:
     description="Телеметрия + CRM → витрина отчётов в ClickHouse",
     schedule="0 2 * * *",
     start_date=pendulum.datetime(2026, 9, 25, 2, tz="UTC"),
-    catchup=True,
-    is_paused_upon_creation=False,
+    # No backfill and paused at start: the mart stays empty until the DAG is run by hand
+    catchup=False,
+    is_paused_upon_creation=True,
     max_active_runs=1,
     default_args={
         "owner": "bionicpro-data",

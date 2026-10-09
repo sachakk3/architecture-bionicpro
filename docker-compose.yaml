@@ -190,18 +190,64 @@ services:
     environment:
       # Token iss is Keycloak's public address; metadata and keys are fetched via the host
       Keycloak__Issuer: http://localhost:8080/realms/reports-realm
-      Keycloak__MetadataAddress: http://host.docker.internal:8080/realms/reports-realm/.well-known/openid-configuration
+      Keycloak__MetadataAddress: http://keycloak:8080/realms/reports-realm/.well-known/openid-configuration
       ClickHouse__Url: http://clickhouse:8123
       ClickHouse__User: reports_api
       ClickHouse__Password: reports_api_password
       Cors__AllowedOrigins__0: http://localhost:3105
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8080"
     depends_on:
       clickhouse:
         condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - dag_sample
+
+  keycloak_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: keycloak_db
+      POSTGRES_USER: keycloak_user
+      POSTGRES_PASSWORD: keycloak_password
+    volumes:
+      - ./postgres-keycloak-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - dag_sample
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak_db:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: keycloak_password
+    command:
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak_db
+    networks:
+      - dag_sample
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3105:3000"
+    depends_on:
+      - keycloak
+      - reports-api
     networks:
       - dag_sample
 
